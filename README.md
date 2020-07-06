@@ -1,5 +1,5 @@
 # webrtc-demo
-webrtc实时视频示例，在线[预览地址](https://nashaofu.github.io/webrtc-demo/)
+webrtc 演示示例，在线[预览地址](https://nashaofu.github.io/webrtc-demo/)
 
 ## 使用说明
 
