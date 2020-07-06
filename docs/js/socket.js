@@ -40,7 +40,6 @@ socket.on('created', function (room) {
 })
 
 socket.on('joined', function (room) {
-  document.querySelector('#id').innerHTML = socket.id
   console.log('joined: ' + room)
   isChannelReady = true
 })

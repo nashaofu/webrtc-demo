@@ -1,225 +1,116 @@
-'use strict'
+const msgInput = document.querySelector('#msg-input')
+const sendBtn = document.querySelector('#send-btn')
+const msg = document.querySelector('#msg')
 
-var isChannelReady = false
-var isInitiator = false
-var isStarted = false
-var localStream
-var pc
-var remoteStream
-var turnReady
+let pc
+let dataChannel
 
-var pcConfig = {
-  iceServers: [
-    {
-      urls: 'stun:stun.l.google.com:19302'
+function createRTC() {
+  if (pc) {
+    pc.close()
+  }
+  pc = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: 'stun:stun.l.google.com:19302'
+      }
+    ]
+  })
+  if (dataChannel) {
+    dataChannel.close()
+  }
+
+  dataChannel = pc.createDataChannel('dataChannel')
+
+  pc.addEventListener('datachannel', event => {
+    event.channel.addEventListener('message', event => {
+      const message = event.data
+      const p = document.createElement('p')
+      p.setAttribute('class', 'msg-type-receive')
+      p.innerHTML = message.split('\n').join('<br/>')
+      msg.append(p)
+    })
+  })
+
+  pc.addEventListener('icecandidate', event => {
+    if (event.candidate) {
+      sendMsg({
+        type: 'candidate',
+        sdpMLineIndex: event.candidate.sdpMLineIndex,
+        sdpMid: event.candidate.sdpMid,
+        candidate: event.candidate.candidate
+      })
     }
-  ]
+  })
+
+  dataChannel.addEventListener('open', event => {
+    msgInput.disabled = false
+    msgInput.focus()
+    sendBtn.disabled = false
+  })
+
+  dataChannel.addEventListener('close', event => {
+    msgInput.disabled = false
+    sendBtn.disabled = false
+  })
 }
 
-// Set up audio and video regardless of what devices are present.
-var sdpConstraints = {
-  offerToReceiveAudio: true,
-  offerToReceiveVideo: true
-}
-
-/////////////////////////////////////////////
-
-var room = 'foo'
-// Could prompt for room name:
-// room = prompt('Enter room name:');
-
-var socket = io.connect()
-if (room !== '') {
-  socket.emit('create or join', room)
-  console.log('Attempted to create or  join room', room)
-}
-
-socket.on('created', function (room) {
-  console.log('Created room ' + room)
-  isInitiator = true
+sendBtn.addEventListener('click', event => {
+  const message = msgInput.value
+  msgInput.value = ''
+  const p = document.createElement('p')
+  p.setAttribute('class', 'msg-type-send')
+  p.innerHTML = message.split('\n').join('<br/>')
+  msg.append(p)
+  dataChannel.send(message)
 })
 
+const socket = io.connect()
+
+socket.emit('create or join', 'dataChannel')
+
 socket.on('joined', function (room) {
-  document.querySelector('#id').innerHTML = socket.id
-  console.log('joined: ' + room)
-  isChannelReady = true
+  sendMsg({ type: 'join' })
 })
 
 socket.on('full', function (room) {
   console.log('Room ' + room + ' is full')
 })
 
-socket.on('join', function (room) {
-  console.log('Another peer made a request to join room ' + room)
-  console.log('This peer is the initiator of room ' + room + '!')
-  isChannelReady = true
-})
-
-socket.on('log', function (array) {
-  console.log.apply(console, array)
-})
-
-////////////////////////////////////////////////
-
-function sendMessage(message) {
-  console.log('Client sending message: ', message)
-  socket.emit('message', message)
+function sendMsg(msg) {
+  console.log('->:', msg.type)
+  socket.emit('message', msg)
 }
 
-// This client receives a message
-socket.on('message', function (message) {
-  console.log('Client received message:', message)
-  if (message.type === 'ready') {
-    maybeStart()
-  } else if (message.type === 'offer') {
-    if (!isInitiator && !isStarted) {
-      maybeStart()
+socket.on('message', async function (message) {
+  console.log('<-:', message.type)
+  switch (message.type) {
+    case 'join': {
+      // 有新的人加入就重新设置会话，重新与新加入的人建立新会话
+      createRTC()
+      const offer = await pc.createOffer()
+      pc.setLocalDescription(offer)
+      sendMsg({ type: 'offer', offer })
+      break
     }
-    pc.setRemoteDescription(new RTCSessionDescription(message))
-    doAnswer()
-  } else if (message.type === 'answer' && isStarted) {
-    pc.setRemoteDescription(new RTCSessionDescription(message))
-  } else if (message.type === 'candidate' && isStarted) {
-    var candidate = new RTCIceCandidate({
-      sdpMLineIndex: message.label,
-      candidate: message.candidate
-    })
-    pc.addIceCandidate(candidate)
-  } else if (message === 'bye' && isStarted) {
-    handleRemoteHangup()
+    case 'offer': {
+      createRTC()
+      pc.setRemoteDescription(new RTCSessionDescription(message.offer))
+      const answer = await pc.createAnswer()
+      pc.setLocalDescription(answer)
+      sendMsg({ type: 'answer', answer })
+      break
+    }
+    case 'answer': {
+      pc.setRemoteDescription(new RTCSessionDescription(message.answer))
+      break
+    }
+    case 'candidate': {
+      pc.addIceCandidate(new RTCIceCandidate(message))
+      break
+    }
+    default:
+      console.log(message)
+      break
   }
 })
-
-////////////////////////////////////////////////////
-
-var localVideo = document.querySelector('#localVideo')
-var remoteVideo = document.querySelector('#remoteVideo')
-console.log(localVideo)
-navigator.mediaDevices
-  .getUserMedia({
-    audio: false,
-    video: true
-  })
-  .then(gotStream)
-  .catch(function (e) {
-    alert('getUserMedia() error: ' + e.name)
-  })
-
-function gotStream(stream) {
-  console.log('Adding local stream.')
-  localStream = stream
-  localVideo.srcObject = stream
-  sendMessage({
-    type: 'ready'
-  })
-  if (isInitiator) {
-    maybeStart()
-  }
-}
-
-var constraints = {
-  video: true
-}
-
-console.log('Getting user media with constraints', constraints)
-
-function maybeStart() {
-  console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady)
-  if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
-    console.log('>>>>>> creating peer connection')
-    createPeerConnection()
-    pc.addStream(localStream)
-    isStarted = true
-    console.log('isInitiator', isInitiator)
-    if (isInitiator) {
-      doCall()
-    }
-  }
-}
-
-window.onbeforeunload = function () {
-  sendMessage('bye')
-}
-
-/////////////////////////////////////////////////////////
-
-function createPeerConnection() {
-  try {
-    pc = new RTCPeerConnection(null)
-    pc.onicecandidate = handleIceCandidate
-    pc.onaddstream = handleRemoteStreamAdded
-    pc.onremovestream = handleRemoteStreamRemoved
-    console.log('Created RTCPeerConnnection')
-  } catch (e) {
-    console.log('Failed to create PeerConnection, exception: ' + e.message)
-    alert('Cannot create RTCPeerConnection object.')
-    return
-  }
-}
-
-function handleIceCandidate(event) {
-  console.log('icecandidate event: ', event)
-  if (event.candidate) {
-    sendMessage({
-      type: 'candidate',
-      label: event.candidate.sdpMLineIndex,
-      id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate
-    })
-  } else {
-    console.log('End of candidates.')
-  }
-}
-
-function handleCreateOfferError(event) {
-  console.log('createOffer() error: ', event)
-}
-
-function doCall() {
-  console.log('Sending offer to peer, &&&&&&&&&&')
-  pc.createOffer(setLocalAndSendMessage, handleCreateOfferError)
-}
-
-function doAnswer() {
-  console.log('Sending answer to peer.')
-  pc.createAnswer().then(setLocalAndSendMessage, onCreateSessionDescriptionError)
-}
-
-function setLocalAndSendMessage(sessionDescription) {
-  console.log('sessionDescription', sessionDescription)
-  pc.setLocalDescription(sessionDescription)
-  console.log('setLocalAndSendMessage sending message', sessionDescription)
-  sendMessage(sessionDescription)
-}
-
-function onCreateSessionDescriptionError(error) {
-  trace('Failed to create session description: ' + error.toString())
-}
-
-function handleRemoteStreamAdded(event) {
-  console.log('Remote stream added.')
-  remoteStream = event.stream
-  remoteVideo.srcObject = remoteStream
-}
-
-function handleRemoteStreamRemoved(event) {
-  console.log('Remote stream removed. Event: ', event)
-}
-
-function hangup() {
-  console.log('Hanging up.')
-  stop()
-  sendMessage('bye')
-}
-
-function handleRemoteHangup() {
-  console.log('Session terminated.')
-  stop()
-  isInitiator = false
-}
-
-function stop() {
-  isStarted = false
-  pc.close()
-  pc = null
-}

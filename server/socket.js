@@ -1,36 +1,36 @@
 const socket = require('socket.io')
 
-module.exports = (server) => {
+module.exports = server => {
   const io = socket.listen(server)
 
   io.sockets.on('connection', function (socket) {
-    console.log('a user connected', socket.id)
-    socket.on('disconnecting', () => {
-      console.log(socket.rooms)
-      console.log('user disconnected', socket.id)
-    })
-    socket.on('chat message', msg => {
-      io.emit('chat message', msg)
-    })
     socket.on('message', function (message) {
-      // for a real app, would be room-only (not broadcast)
-      if (message.type === 'ready') {
-        socket.broadcast.emit('message', { type: 'ready' })
-      } else if (message.type === 'offer') {
-        socket.broadcast.emit('message', message)
-      } else if (message.type === 'answer') {
-        socket.broadcast.emit('message', message)
-      } else if (message.type === 'candidate') {
-        socket.broadcast.emit('message', message)
-      } else {
-        console.log(message)
+      console.log(message.type)
+      switch (message.type) {
+        case 'create':
+          socket.broadcast.emit('message', message)
+          break
+        case 'join':
+          socket.broadcast.emit('message', message)
+          break
+        case 'offer':
+          socket.broadcast.emit('message', message)
+          break
+        case 'answer':
+          socket.broadcast.emit('message', message)
+          break
+        case 'candidate':
+          socket.broadcast.emit('message', message)
+          break
+        default:
+          break
       }
     })
 
     socket.on('create or join', function (room) {
       const clientsInRoom = io.sockets.adapter.rooms[room]
       const numClients = clientsInRoom ? Object.keys(clientsInRoom.sockets).length : 0
-      console.log(socket.id)
+      console.log(numClients)
       if (numClients === 0) {
         socket.join(room)
         socket.emit('created', room, socket.id)
@@ -38,7 +38,6 @@ module.exports = (server) => {
         io.sockets.in(room).emit('join', room)
         socket.join(room)
         socket.emit('joined', room, socket.id)
-        io.sockets.in(room).emit('ready')
       } else {
         // max two clients
         socket.emit('full', room)
