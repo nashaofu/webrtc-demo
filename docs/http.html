@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Realtime communication with WebRTC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
+
+  <body>
+    <h1>HTTP方式交换设备网络信息</h1>
+    <div>该页面需clone仓库，启动服务器测试</div>
+    <pre>
+1. 创建者在浏览器输入https://localhost，不能加hash
+2. 加入会话的人需要在地址后面加上任意hash，如https://localhost/#creater，
+3. 以上步骤不能颠倒，必须先创建，后面才能加入
+4. 刷新页面后，会话不能恢复，必须重新执行1-2步骤。
+   这也是为什么通常会使用socket的原因，因为有一个会话者的刷新你页面后，
+   重新连接时可以通知其他其他参与者，而http不能服务端推送
+    </pre>
+    <div class="videos">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+    <!-- This file is automatically added/served when running "node index.js". -->
+    <script src="js/axios.js"></script>
+    <script src="js/adapter.js"></script>
+    <script src="js/http.js"></script>
+  </body>
+</html>

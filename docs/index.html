@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webRTC</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      .create-join-select {
+        margin: 10px auto;
+      }
+      .session-conatiner {
+        display: none;
+        margin: 10px auto;
+      }
+      .video-conatiner {
+        display: flex;
+      }
+      .video-conatiner video {
+        width: 50%;
+        height: 400px;
+        background-color: black;
+        border: 1px solid #555;
+        opacity: 0.1;
+      }
+
+      #create,
+      #join {
+        display: none;
+      }
+
+      textarea {
+        width: 100%;
+        height: 80px;
+        resize: none;
+        padding: 6px 10px;
+        color: #000;
+      }
+
+      textarea[readonly] {
+        color: #08f;
+        height: 140px;
+        text-decoration: underline;
+      }
+      textarea[readonly]:focus {
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <img
+      src="https://camo.githubusercontent.com/652c5b9acfaddf3a9c326fa6bde407b87f7be0f4/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6f72616e67655f6666373630302e706e67"
+      alt="Fork me on GitHub"
+      data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png"
+      style="position: absolute; top: 0px; right: 0px; border: 0px;"
+    />
+    <div>
+      <a href="./http.html">使用http握手建立连接的方式</a><br />
+      <a href="./socket.html">使用socket握手建立连接的方式</a>
+    </div>
+    <div id="create-join-select" class="create-join-select">
+      <button id="create-btn">创建会话</button>
+      <button id="join-btn">加入会话</button>
+    </div>
+    <div id="session-conatiner" class="session-conatiner">
+      <div id="create">
+        <div>
+          <div>复制下面的内容给要邀请的人</div>
+          <textarea id="create-offer-token" readonly></textarea>
+        </div>
+        <div>
+          <div>粘贴收到的内容</div>
+          <textarea id="create-answer-token"></textarea>
+          <button id="create-answer-submit">提交</button>
+        </div>
+      </div>
+
+      <div id="join">
+        <div>
+          <div>粘贴收到的内容</div>
+          <textarea id="join-offer-token"></textarea>
+          <button id="join-offer-submit">提交</button>
+        </div>
+        <div>
+          <div>复制下面的内容发送给邀请者</div>
+          <textarea id="join-answer-token" readonly></textarea>
+        </div>
+      </div>
+
+      <div class="video-conatiner">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+      </div>
+    </div>
+    <div>
+      <img src="webrtc.svg" />
+    </div>
+    <script src="js/adapter.js"></script>
+    <script src="js/index.js"></script>
+  </body>
+</html>

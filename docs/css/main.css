@@ -1,0 +1,14 @@
+body {
+  font-family: sans-serif;
+}
+
+.videos {
+  display: flex;
+}
+
+video {
+  width: 50%;
+  height: 400px;
+  background-color: black;
+  border: 1px solid #ccc;
+}

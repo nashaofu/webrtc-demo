@@ -1,0 +1,15 @@
+{
+  "name": "webrtc-demo",
+  "version": "0.0.1",
+  "description": "webrtc实时视频示例",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "koa": "^2.13.0",
+    "koa-logger": "^3.2.1",
+    "koa-parser": "^1.0.8",
+    "koa-static": "^5.0.0",
+    "socket.io": "^2.3.0"
+  }
+}
