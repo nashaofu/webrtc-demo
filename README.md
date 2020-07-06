@@ -3,15 +3,33 @@ webrtc 演示示例，在线[预览地址](https://nashaofu.github.io/webrtc-dem
 
 ## 使用说明
 
-1. 安装依赖启动服务
+1. 生成ssl
+```bash
+mkdir ssl
+
+cd ssl
+
+openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
+
+# writing RSA key
+openssl rsa -passin pass:x -in server.pass.key -out server.key
+
+rm server.pass.key
+
+openssl req -new -key server.key -out server.csr
+
+openssl x509 -req -sha256 -days 365 -in server.csr -signkey server.key -out server.crt
+```
+
+2. 安装依赖启动服务
 ```bash
 yarn
 
 yarn start
 ```
 
-2. 在浏览器中打开终端输出的地址
-3. index.html是使用复制文本握手的示例，http.html是使用http建立连接的示例，socket.html是用来演示socket建立连接的示例
+3. 在浏览器中打开终端输出的地址
+4. index.html是使用复制文本握手的示例，http.html是使用http建立连接的示例，socket.html是用来演示socket建立连接的示例
 
 ## webrct握手流程
 
