@@ -6,25 +6,8 @@ module.exports = server => {
   io.sockets.on('connection', function (socket) {
     socket.on('message', function (message) {
       console.log(message.type)
-      switch (message.type) {
-        case 'create':
-          socket.broadcast.emit('message', message)
-          break
-        case 'join':
-          socket.broadcast.emit('message', message)
-          break
-        case 'offer':
-          socket.broadcast.emit('message', message)
-          break
-        case 'answer':
-          socket.broadcast.emit('message', message)
-          break
-        case 'candidate':
-          socket.broadcast.emit('message', message)
-          break
-        default:
-          break
-      }
+      // 发送的任何信息都转发给其他用户
+      socket.broadcast.emit('message', message)
     })
 
     socket.on('create or join', function (room) {
