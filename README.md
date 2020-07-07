@@ -39,4 +39,4 @@ yarn start
 
 ## MDN webRTC连接流程
 
-![webrtc-mdn.png](./webrtc-mdn.png)
+![webRTC-mdn.png](./webRTC-mdn.png)
