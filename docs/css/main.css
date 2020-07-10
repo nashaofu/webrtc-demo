@@ -1,9 +1,14 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: sans-serif;
 }
 
 .videos {
   display: flex;
+  flex-wrap: wrap;
 }
 
 video {

@@ -1,224 +1,113 @@
-'use strict'
+const videos = document.querySelector('#videos')
+const localVideo = document.querySelector('#localVideo')
 
-var isChannelReady = false
-var isInitiator = false
-var isStarted = false
-var localStream
-var pc
-var remoteStream
-var turnReady
+const remotes = {}
+const socket = io.connect()
 
-var pcConfig = {
-  iceServers: [
-    {
-      urls: 'stun:stun.l.google.com:19302'
+function sendMsg(msg) {
+  console.log('->:', msg.type)
+  msg.socketId = socket.id
+  socket.emit('message', msg)
+}
+
+function createRTC(stream, id) {
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: 'stun:stun.l.google.com:19302'
+      }
+    ]
+  })
+
+  pc.addEventListener('icecandidate', event => {
+    if (event.candidate) {
+      sendMsg({
+        type: 'candidate',
+        candidate: {
+          sdpMLineIndex: event.candidate.sdpMLineIndex,
+          sdpMid: event.candidate.sdpMid,
+          candidate: event.candidate.candidate
+        }
+      })
     }
-  ]
-}
+  })
 
-// Set up audio and video regardless of what devices are present.
-var sdpConstraints = {
-  offerToReceiveAudio: true,
-  offerToReceiveVideo: true
-}
+  pc.addEventListener('addstream', event => {
+    remotes[id].video.srcObject = event.stream
+  })
 
-/////////////////////////////////////////////
+  pc.addStream(stream)
 
-var room = 'foo'
-// Could prompt for room name:
-// room = prompt('Enter room name:');
-
-var socket = io.connect()
-if (room !== '') {
-  socket.emit('create or join', room)
-  console.log('Attempted to create or  join room', room)
-}
-
-socket.on('created', function (room) {
-  console.log('Created room ' + room)
-  isInitiator = true
-})
-
-socket.on('joined', function (room) {
-  console.log('joined: ' + room)
-  isChannelReady = true
-})
-
-socket.on('full', function (room) {
-  console.log('Room ' + room + ' is full')
-})
-
-socket.on('join', function (room) {
-  console.log('Another peer made a request to join room ' + room)
-  console.log('This peer is the initiator of room ' + room + '!')
-  isChannelReady = true
-})
-
-socket.on('log', function (array) {
-  console.log.apply(console, array)
-})
-
-////////////////////////////////////////////////
-
-function sendMessage(message) {
-  console.log('Client sending message: ', message)
-  socket.emit('message', message)
-}
-
-// This client receives a message
-socket.on('message', function (message) {
-  console.log('Client received message:', message)
-  if (message.type === 'ready') {
-    maybeStart()
-  } else if (message.type === 'offer') {
-    if (!isInitiator && !isStarted) {
-      maybeStart()
-    }
-    pc.setRemoteDescription(new RTCSessionDescription(message))
-    doAnswer()
-  } else if (message.type === 'answer' && isStarted) {
-    pc.setRemoteDescription(new RTCSessionDescription(message))
-  } else if (message.type === 'candidate' && isStarted) {
-    var candidate = new RTCIceCandidate({
-      sdpMLineIndex: message.label,
-      candidate: message.candidate
-    })
-    pc.addIceCandidate(candidate)
-  } else if (message === 'bye' && isStarted) {
-    handleRemoteHangup()
+  const video = document.createElement('video')
+  video.setAttribute('autoplay', true)
+  video.setAttribute('playsinline', true)
+  videos.append(video)
+  remotes[id] = {
+    pc,
+    video
   }
-})
+}
 
-////////////////////////////////////////////////////
-
-var localVideo = document.querySelector('#localVideo')
-var remoteVideo = document.querySelector('#remoteVideo')
-console.log(localVideo)
 navigator.mediaDevices
   .getUserMedia({
     audio: false,
     video: true
   })
-  .then(gotStream)
-  .catch(function (e) {
-    alert('getUserMedia() error: ' + e.name)
-  })
+  .then(stream => {
+    localVideo.srcObject = stream
 
-function gotStream(stream) {
-  console.log('Adding local stream.')
-  localStream = stream
-  localVideo.srcObject = stream
-  sendMessage({
-    type: 'ready'
-  })
-  if (isInitiator) {
-    maybeStart()
-  }
-}
+    socket.emit('create or join', 'dataChannel')
 
-var constraints = {
-  video: true
-}
-
-console.log('Getting user media with constraints', constraints)
-
-function maybeStart() {
-  console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady)
-  if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
-    console.log('>>>>>> creating peer connection')
-    createPeerConnection()
-    pc.addStream(localStream)
-    isStarted = true
-    console.log('isInitiator', isInitiator)
-    if (isInitiator) {
-      doCall()
-    }
-  }
-}
-
-window.onbeforeunload = function () {
-  sendMessage('bye')
-}
-
-/////////////////////////////////////////////////////////
-
-function createPeerConnection() {
-  try {
-    pc = new RTCPeerConnection(null)
-    pc.onicecandidate = handleIceCandidate
-    pc.onaddstream = handleRemoteStreamAdded
-    pc.onremovestream = handleRemoteStreamRemoved
-    console.log('Created RTCPeerConnnection')
-  } catch (e) {
-    console.log('Failed to create PeerConnection, exception: ' + e.message)
-    alert('Cannot create RTCPeerConnection object.')
-    return
-  }
-}
-
-function handleIceCandidate(event) {
-  console.log('icecandidate event: ', event)
-  if (event.candidate) {
-    sendMessage({
-      type: 'candidate',
-      label: event.candidate.sdpMLineIndex,
-      id: event.candidate.sdpMid,
-      candidate: event.candidate.candidate
+    socket.on('joined', function (room, id) {
+      sendMsg({ type: 'join' })
     })
-  } else {
-    console.log('End of candidates.')
-  }
-}
 
-function handleCreateOfferError(event) {
-  console.log('createOffer() error: ', event)
-}
+    socket.on('leaveed', function (id) {
+      if (remotes[id]) {
+        remotes[id].pc.close()
+        videos.removeChild(remotes[id].video)
+        delete remotes[id]
+      }
+    })
 
-function doCall() {
-  console.log('Sending offer to peer, &&&&&&&&&&')
-  pc.createOffer(setLocalAndSendMessage, handleCreateOfferError)
-}
+    socket.on('full', function (room) {
+      console.log('Room ' + room + ' is full')
+    })
 
-function doAnswer() {
-  console.log('Sending answer to peer.')
-  pc.createAnswer().then(setLocalAndSendMessage, onCreateSessionDescriptionError)
-}
-
-function setLocalAndSendMessage(sessionDescription) {
-  console.log('sessionDescription', sessionDescription)
-  pc.setLocalDescription(sessionDescription)
-  console.log('setLocalAndSendMessage sending message', sessionDescription)
-  sendMessage(sessionDescription)
-}
-
-function onCreateSessionDescriptionError(error) {
-  trace('Failed to create session description: ' + error.toString())
-}
-
-function handleRemoteStreamAdded(event) {
-  console.log('Remote stream added.')
-  remoteStream = event.stream
-  remoteVideo.srcObject = remoteStream
-}
-
-function handleRemoteStreamRemoved(event) {
-  console.log('Remote stream removed. Event: ', event)
-}
-
-function hangup() {
-  console.log('Hanging up.')
-  stop()
-  sendMessage('bye')
-}
-
-function handleRemoteHangup() {
-  console.log('Session terminated.')
-  stop()
-  isInitiator = false
-}
-
-function stop() {
-  isStarted = false
-  pc.close()
-  pc = null
-}
+    socket.on('message', async function (message) {
+      console.log('<-:', message.type)
+      switch (message.type) {
+        case 'join': {
+          // 有新的人加入就重新设置会话，重新与新加入的人建立新会话
+          createRTC(stream, message.socketId)
+          const pc = remotes[message.socketId].pc
+          const offer = await pc.createOffer()
+          pc.setLocalDescription(offer)
+          sendMsg({ type: 'offer', offer })
+          break
+        }
+        case 'offer': {
+          createRTC(stream, message.socketId)
+          const pc = remotes[message.socketId].pc
+          pc.setRemoteDescription(new RTCSessionDescription(message.offer))
+          const answer = await pc.createAnswer()
+          pc.setLocalDescription(answer)
+          sendMsg({ type: 'answer', answer })
+          break
+        }
+        case 'answer': {
+          const pc = remotes[message.socketId].pc
+          pc.setRemoteDescription(new RTCSessionDescription(message.answer))
+          break
+        }
+        case 'candidate': {
+          const pc = remotes[message.socketId].pc
+          pc.addIceCandidate(new RTCIceCandidate(message.candidate))
+          break
+        }
+        default:
+          console.log(message)
+          break
+      }
+    })
+  })

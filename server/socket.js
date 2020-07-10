@@ -4,6 +4,10 @@ module.exports = server => {
   const io = socket.listen(server)
 
   io.sockets.on('connection', function (socket) {
+    socket.on('disconnect', reason => {
+      socket.broadcast.emit('leaveed', socket.id)
+    })
+
     socket.on('message', function (message) {
       console.log(message.type)
       // 发送的任何信息都转发给其他用户

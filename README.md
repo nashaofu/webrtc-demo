@@ -28,7 +28,7 @@ yarn
 yarn start
 ```
 
-3. 在浏览器中打开终端输出的地址
+3. 在浏览器中打开终端输出的地址，如遇到证书安全问题可参考https://blog.caojun.xyz/posts/macos_trust_ssl/
 4. index.html是使用复制文本握手的示例，http.html是使用http建立连接的示例，socket.html是用来演示socket建立连接的示例
 
 ## webrct握手流程
