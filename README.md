@@ -1,5 +1,5 @@
 # webrtc-demo
-webrtc 演示示例，在线[预览地址](https://nashaofu.github.io/webrtc-demo/)，项目更多介绍可在公众号[nashaofu在路上](https://mp.weixin.qq.com/s?__biz=MzI2MTE0Njk1OA==&mid=2247483719&idx=1&sn=83a5bdde1c32abcfdb523244abeecf0d&chksm=ea5f9166dd281870f8d9f1c45e9438513c603bc809f84e7bc506cea894ace8365fce55ec2f66&mpshare=1&scene=1&srcid=0711vqT1fuIYaMUmSENe3Vqw&sharer_sharetime=1594441106087&sharer_shareid=e153e334206354e3d976016f883ef1ae#rd)中查看
+webrtc 演示示例，在线[预览地址](https://nashaofu.github.io/webrtc-demo/)，项目更多介绍可在公众号[nashaofu在路上](https://mp.weixin.qq.com/s/0C9jWmiiUisziAntgJLn1g)中查看
 
 ## 使用说明
 
