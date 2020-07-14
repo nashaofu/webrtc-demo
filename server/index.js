@@ -20,8 +20,8 @@ http(app)
 
 const server = https.createServer(
   {
-    key: fs.readFileSync(path.join(__dirname, '../ssl/server.key')), // ssl文件路径
-    cert: fs.readFileSync(path.join(__dirname, '../ssl/server.crt')) // ssl文件路径
+    key: fs.readFileSync(path.join(__dirname, '../tls/server.key')), // tls文件路径
+    cert: fs.readFileSync(path.join(__dirname, '../tls/server.crt')) // tls文件路径
   },
   app.callback()
 )

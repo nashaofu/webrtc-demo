@@ -3,11 +3,11 @@ webrtc 演示示例，在线[预览地址](https://nashaofu.github.io/webrtc-dem
 
 ## 使用说明
 
-1. 生成ssl
+1. 生成tls证书
 ```bash
-mkdir ssl
+mkdir tls
 
-cd ssl
+cd tls
 
 openssl genrsa -des3 -passout pass:x -out server.pass.key 2048
 
