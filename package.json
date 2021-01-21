@@ -10,6 +10,6 @@
     "koa-logger": "^3.2.1",
     "koa-parser": "^1.0.8",
     "koa-static": "^5.0.0",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.4.0"
   }
 }
