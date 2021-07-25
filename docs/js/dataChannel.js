@@ -34,7 +34,7 @@ function createRTC() {
 
   pc.addEventListener('icecandidate', event => {
     if (event.candidate) {
-      sendMsg({
+      sendMsg(null, {
         type: 'candidate',
         sdpMLineIndex: event.candidate.sdpMLineIndex,
         sdpMid: event.candidate.sdpMid,
@@ -70,16 +70,16 @@ const socket = io.connect()
 socket.emit('create or join', 'dataChannel')
 
 socket.on('joined', function (room) {
-  sendMsg({ type: 'join' })
+  sendMsg(null, { type: 'join' })
 })
 
 socket.on('full', function (room) {
   console.log('Room ' + room + ' is full')
 })
 
-function sendMsg(msg) {
+function sendMsg(target, msg) {
   console.log('->:', msg.type)
-  socket.emit('message', msg)
+  socket.emit('message', target, msg)
 }
 
 socket.on('message', async function (message) {
@@ -90,7 +90,7 @@ socket.on('message', async function (message) {
       createRTC()
       const offer = await pc.createOffer()
       pc.setLocalDescription(offer)
-      sendMsg({ type: 'offer', offer })
+      sendMsg(message.socketId, { type: 'offer', offer })
       break
     }
     case 'offer': {
@@ -98,7 +98,7 @@ socket.on('message', async function (message) {
       pc.setRemoteDescription(new RTCSessionDescription(message.offer))
       const answer = await pc.createAnswer()
       pc.setLocalDescription(answer)
-      sendMsg({ type: 'answer', answer })
+      sendMsg(message.socketId, { type: 'answer', answer })
       break
     }
     case 'answer': {

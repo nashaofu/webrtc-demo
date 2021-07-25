@@ -1,13 +1,22 @@
 const videos = document.querySelector('#videos')
 const localVideo = document.querySelector('#localVideo')
+const roomId = document.querySelector('#roomId')
 
+const query = new URLSearchParams(location.search)
+const room = query.get('room')
+
+// 存储通信方信息
 const remotes = {}
 const socket = io.connect()
 
-function sendMsg(msg) {
+if (!room) {
+  location.replace(`/socket.html?room=${Math.random().toString(36).substr(2, 9)}`)
+}
+
+function sendMsg(target, msg) {
   console.log('->:', msg.type)
   msg.socketId = socket.id
-  socket.emit('message', msg)
+  socket.emit('message', target, msg)
 }
 
 function createRTC(stream, id) {
@@ -21,7 +30,8 @@ function createRTC(stream, id) {
 
   pc.addEventListener('icecandidate', event => {
     if (event.candidate) {
-      sendMsg({
+      // 发送自身的网络信息到通信方
+      sendMsg(id, {
         type: 'candidate',
         candidate: {
           sdpMLineIndex: event.candidate.sdpMLineIndex,
@@ -32,11 +42,13 @@ function createRTC(stream, id) {
     }
   })
 
-  pc.addEventListener('addstream', event => {
-    remotes[id].video.srcObject = event.stream
+  // 有远程视频流时，连接到远程视频流
+  pc.addEventListener('track', event => {
+    remotes[id].video.srcObject = event.streams[0]
   })
 
-  pc.addStream(stream)
+  // 添加本地视频流到会话中
+  stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
   const video = document.createElement('video')
   video.setAttribute('autoplay', true)
@@ -54,15 +66,17 @@ navigator.mediaDevices
     video: true
   })
   .then(stream => {
+    roomId.innerHTML = room
     localVideo.srcObject = stream
 
-    socket.emit('create or join', 'dataChannel')
+    socket.emit('create or join', room)
 
     socket.on('joined', function (room, id) {
-      sendMsg({ type: 'join' })
+      sendMsg(undefined, { type: 'join' })
     })
 
     socket.on('leaveed', function (id) {
+      console.log('leaveed', remotes, id)
       if (remotes[id]) {
         remotes[id].pc.close()
         videos.removeChild(remotes[id].video)
@@ -72,6 +86,8 @@ navigator.mediaDevices
 
     socket.on('full', function (room) {
       console.log('Room ' + room + ' is full')
+      socket.close()
+      alert('房间已满')
     })
 
     socket.on('message', async function (message) {
@@ -83,7 +99,7 @@ navigator.mediaDevices
           const pc = remotes[message.socketId].pc
           const offer = await pc.createOffer()
           pc.setLocalDescription(offer)
-          sendMsg({ type: 'offer', offer })
+          sendMsg(message.socketId, { type: 'offer', offer })
           break
         }
         case 'offer': {
@@ -92,7 +108,7 @@ navigator.mediaDevices
           pc.setRemoteDescription(new RTCSessionDescription(message.offer))
           const answer = await pc.createAnswer()
           pc.setLocalDescription(answer)
-          sendMsg({ type: 'answer', answer })
+          sendMsg(message.socketId, { type: 'answer', answer })
           break
         }
         case 'answer': {
