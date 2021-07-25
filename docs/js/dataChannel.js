@@ -2,25 +2,50 @@ const msgInput = document.querySelector('#msg-input')
 const sendBtn = document.querySelector('#send-btn')
 const msg = document.querySelector('#msg')
 
-let pc
-let dataChannel
+const query = new URLSearchParams(location.search)
+const room = query.get('room')
 
-function createRTC() {
-  if (pc) {
-    pc.close()
-  }
-  pc = new RTCPeerConnection({
+if (!room) {
+  location.replace(`/dataChannel.html?room=${Math.random().toString(36).substr(2, 9)}`)
+}
+
+const socket = io.connect()
+// 存储通信方信息
+const remotes = {}
+
+// socket发送消息
+function sendMsg(target, msg) {
+  console.log('->:', msg.type)
+  msg.socketId = socket.id
+  socket.emit('message', target, msg)
+}
+
+// 创建RTC对象，一个RTC对象只能与一个远端连接
+function createRTC(id) {
+  const pc = new RTCPeerConnection({
     iceServers: [
       {
         urls: 'stun:stun.l.google.com:19302'
       }
     ]
   })
-  if (dataChannel) {
-    dataChannel.close()
-  }
 
-  dataChannel = pc.createDataChannel('dataChannel')
+  const dataChannel = pc.createDataChannel('dataChannel')
+
+  // 获取本地网络信息，并发送给通信方
+  pc.addEventListener('icecandidate', event => {
+    if (event.candidate) {
+      // 发送自身的网络信息到通信方
+      sendMsg(id, {
+        type: 'candidate',
+        candidate: {
+          sdpMLineIndex: event.candidate.sdpMLineIndex,
+          sdpMid: event.candidate.sdpMid,
+          candidate: event.candidate.candidate
+        }
+      })
+    }
+  })
 
   pc.addEventListener('datachannel', event => {
     event.channel.addEventListener('message', event => {
@@ -30,17 +55,6 @@ function createRTC() {
       p.innerHTML = message.split('\n').join('<br/>')
       msg.append(p)
     })
-  })
-
-  pc.addEventListener('icecandidate', event => {
-    if (event.candidate) {
-      sendMsg(null, {
-        type: 'candidate',
-        sdpMLineIndex: event.candidate.sdpMLineIndex,
-        sdpMid: event.candidate.sdpMid,
-        candidate: event.candidate.candidate
-      })
-    }
   })
 
   dataChannel.addEventListener('open', event => {
@@ -53,6 +67,11 @@ function createRTC() {
     msgInput.disabled = false
     sendBtn.disabled = false
   })
+
+  remotes[id] = {
+    pc,
+    dataChannel
+  }
 }
 
 sendBtn.addEventListener('click', event => {
@@ -62,39 +81,44 @@ sendBtn.addEventListener('click', event => {
   p.setAttribute('class', 'msg-type-send')
   p.innerHTML = message.split('\n').join('<br/>')
   msg.append(p)
-  dataChannel.send(message)
+  Object.keys(remotes).forEach(key => {
+    remotes[key].dataChannel.send(message)
+  })
 })
 
-const socket = io.connect()
+// 创建或者加入房间，具体是加入还是创建需看房间号是否存在
+socket.emit('create or join', room)
 
-socket.emit('create or join', 'dataChannel')
-
-socket.on('joined', function (room) {
-  sendMsg(null, { type: 'join' })
+socket.on('leaveed', function (id) {
+  console.log('leaveed', id)
+  if (remotes[id]) {
+    remotes[id].pc.close()
+    remotes[id].dataChannel.close()
+    delete remotes[id]
+  }
 })
 
 socket.on('full', function (room) {
   console.log('Room ' + room + ' is full')
+  socket.close()
+  alert('房间已满')
 })
-
-function sendMsg(target, msg) {
-  console.log('->:', msg.type)
-  socket.emit('message', target, msg)
-}
 
 socket.on('message', async function (message) {
   console.log('<-:', message.type)
   switch (message.type) {
     case 'join': {
       // 有新的人加入就重新设置会话，重新与新加入的人建立新会话
-      createRTC()
+      createRTC(message.socketId)
+      const pc = remotes[message.socketId].pc
       const offer = await pc.createOffer()
       pc.setLocalDescription(offer)
       sendMsg(message.socketId, { type: 'offer', offer })
       break
     }
     case 'offer': {
-      createRTC()
+      createRTC(message.socketId)
+      const pc = remotes[message.socketId].pc
       pc.setRemoteDescription(new RTCSessionDescription(message.offer))
       const answer = await pc.createAnswer()
       pc.setLocalDescription(answer)
@@ -102,11 +126,13 @@ socket.on('message', async function (message) {
       break
     }
     case 'answer': {
+      const pc = remotes[message.socketId].pc
       pc.setRemoteDescription(new RTCSessionDescription(message.answer))
       break
     }
     case 'candidate': {
-      pc.addIceCandidate(new RTCIceCandidate(message))
+      const pc = remotes[message.socketId].pc
+      pc.addIceCandidate(new RTCIceCandidate(message.candidate))
       break
     }
     default:

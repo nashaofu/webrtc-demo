@@ -1,24 +1,28 @@
+// 视频列表区域
 const videos = document.querySelector('#videos')
+// 本地视频预览
 const localVideo = document.querySelector('#localVideo')
+// 房间号
 const roomId = document.querySelector('#roomId')
 
 const query = new URLSearchParams(location.search)
 const room = query.get('room')
 
+if (!room) {
+  location.replace(`/socket.html?room=${Math.random().toString(36).substr(2, 9)}`)
+}
 // 存储通信方信息
 const remotes = {}
 const socket = io.connect()
 
-if (!room) {
-  location.replace(`/socket.html?room=${Math.random().toString(36).substr(2, 9)}`)
-}
-
+// socket发送消息
 function sendMsg(target, msg) {
   console.log('->:', msg.type)
   msg.socketId = socket.id
   socket.emit('message', target, msg)
 }
 
+// 创建RTC对象，一个RTC对象只能与一个远端连接
 function createRTC(stream, id) {
   const pc = new RTCPeerConnection({
     iceServers: [
@@ -28,6 +32,7 @@ function createRTC(stream, id) {
     ]
   })
 
+  // 获取本地网络信息，并发送给通信方
   pc.addEventListener('icecandidate', event => {
     if (event.candidate) {
       // 发送自身的网络信息到通信方
@@ -42,7 +47,7 @@ function createRTC(stream, id) {
     }
   })
 
-  // 有远程视频流时，连接到远程视频流
+  // 有远程视频流时，显示远程视频流
   pc.addEventListener('track', event => {
     remotes[id].video.srcObject = event.streams[0]
   })
@@ -50,6 +55,7 @@ function createRTC(stream, id) {
   // 添加本地视频流到会话中
   stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
+  // 用于显示远程视频
   const video = document.createElement('video')
   video.setAttribute('autoplay', true)
   video.setAttribute('playsinline', true)
@@ -62,21 +68,18 @@ function createRTC(stream, id) {
 
 navigator.mediaDevices
   .getUserMedia({
-    audio: false,
+    audio: false, // 本地测试防止回声
     video: true
   })
   .then(stream => {
     roomId.innerHTML = room
     localVideo.srcObject = stream
 
+    // 创建或者加入房间，具体是加入还是创建需看房间号是否存在
     socket.emit('create or join', room)
 
-    socket.on('joined', function (room, id) {
-      sendMsg(undefined, { type: 'join' })
-    })
-
     socket.on('leaveed', function (id) {
-      console.log('leaveed', remotes, id)
+      console.log('leaveed', id)
       if (remotes[id]) {
         remotes[id].pc.close()
         videos.removeChild(remotes[id].video)
