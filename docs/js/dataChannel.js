@@ -6,7 +6,7 @@ const query = new URLSearchParams(location.search)
 const room = query.get('room')
 
 if (!room) {
-  location.replace(`/dataChannel.html?room=${Math.random().toString(36).substr(2, 9)}`)
+  location.replace(`${location.pathname}?room=${Math.random().toString(36).substr(2, 9)}`)
 }
 
 const socket = io.connect()
