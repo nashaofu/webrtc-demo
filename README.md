@@ -1,6 +1,6 @@
 # webrtc-demo
 
-webrtc 演示示例，在线[预览地址](https://nashaofu.github.io/webrtc-demo/)，项目更多介绍可在公众号[nashaofu 在路上](https://mp.weixin.qq.com/s/0C9jWmiiUisziAntgJLn1g)中查看
+webrtc 演示示例，在线[预览地址](https://www.nashaofu.com)，项目更多介绍可在公众号[代码骑行与美食](https://mp.weixin.qq.com/s/0C9jWmiiUisziAntgJLn1g)中查看
 
 ## 使用说明
 
