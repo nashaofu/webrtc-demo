@@ -2,7 +2,7 @@
 
 webrtc 演示示例，可在[预览地址](https://www.nashaofu.com)直接使用，或者在[https://nashaofu.github.io/webrtc-demo/](https://nashaofu.github.io/webrtc-demo/)查看基本显示效果，项目更多介绍可在公众号[代码骑行与美食](https://mp.weixin.qq.com/s/0C9jWmiiUisziAntgJLn1g)中查看
 
-webrtc更多介绍：https://mp.weixin.qq.com/s/VQwvyaitC1L8noIq5Bnwjw
+更多 WebRTC 介绍：https://mp.weixin.qq.com/s/VQwvyaitC1L8noIq5Bnwjw
 
 ## 使用说明
 
